@@ -1,0 +1,24 @@
+{
+  "name": "legg-frontend",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.43.2",
+    "date-fns": "^3.6.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-beautiful-dnd": "^13.1.1",
+    "socket.io-client": "^4.7.5"
+  },
+  "devDependencies": {
+    "@types/react": "^18.0.33",
+    "@types/react-beautiful-dnd": "^13.1.5",
+    "@vitejs/plugin-react": "^4.2.1",
+    "typescript": "^5.4.0",
+    "vite": "^5.2.0"
+  }
+}
