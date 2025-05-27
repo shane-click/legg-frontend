@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react';
 import { Calendar, dateFnsLocalizer, Views } from 'react-big-calendar';
-import withDragAndDrop from 'react-big-calendar/lib/addons/dragAndDrop';
+import withDnD from 'react-big-calendar/lib/addons/dragAndDrop';
 import { format, parse, startOfWeek, getDay } from 'date-fns';
 import enAU from 'date-fns/locale/en-AU';
+import Modal from './JobEditModal';
 import { socket } from '../socket';
 import type { DraftJob } from './JobModal';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import 'react-big-calendar/lib/addons/dragAndDrop/styles.css';
 
 const API = import.meta.env.VITE_API_BASE_URL;
-const DnDCalendar = withDragAndDrop(Calendar);
+const DnDCalendar = withDnD(Calendar);
 const localizer = dateFnsLocalizer({
   format,
   parse,
@@ -17,6 +18,35 @@ const localizer = dateFnsLocalizer({
   getDay,
   locales: { 'en-AU': enAU }
 });
+
+/* ---------------- day-header component showing staff ---------------- */
+const StaffHeader = ({ date }: { date: Date }) => {
+  const [staff, setStaff] = useState<any[]>([]);
+  useEffect(() => {
+    fetch(`${API}/staff/day/${format(date, 'yyyy-MM-dd')}`)
+      .then(r => r.json())
+      .then(setStaff);
+  }, [date]);
+
+  const total = staff.reduce(
+    (t: number, s: any) => t + (s.day_capacity_override ?? s.default_daily_capacity),
+    0
+  );
+
+  return (
+    <div style={{ textAlign: 'center', fontSize: 11 }}>
+      <div>{format(date, 'EEE d')}</div>
+      {staff.map((s: any) => (
+        <div key={s.name}>
+          {s.name} {s.day_capacity_override ?? s.default_daily_capacity}h
+        </div>
+      ))}
+      <strong>{total}h</strong>
+    </div>
+  );
+};
+
+/* -------------------------------------------------------------------- */
 
 export default function ScheduleCalendar({
   unscheduled,
@@ -26,14 +56,14 @@ export default function ScheduleCalendar({
   setUnscheduled(j: DraftJob[]): void;
 }) {
   const [events, setEvents] = useState<any[]>([]);
-  const [draftPicked, setDraftPicked] = useState<DraftJob | null>(null);
+  const [draft, setDraft] = useState<DraftJob | null>(null);
+  const [editing, setEditing] = useState<any | null>(null);
 
-  /* ---------- fetch & realtime ---------- */
-  const fetchJobs = async () => {
+  /* -------- load jobs ---------- */
+  const load = async () => {
     const today = format(new Date(), 'yyyy-MM-dd');
     const in30 = format(new Date(Date.now() + 2.59e9), 'yyyy-MM-dd');
-    const res = await fetch(`${API}/jobs?startDate=${today}&endDate=${in30}`);
-    const rows = await res.json();
+    const rows = await fetch(`${API}/jobs?startDate=${today}&endDate=${in30}`).then(r => r.json());
 
     setEvents(
       rows.flatMap((j: any) =>
@@ -53,62 +83,85 @@ export default function ScheduleCalendar({
   };
 
   useEffect(() => {
-    fetchJobs();
+    load();
     const s = socket();
-    s.on('schedule_updated', fetchJobs);
-    return () => s.off('schedule_updated', fetchJobs);
+    s.on('schedule_updated', load);
+    return () => s.off('schedule_updated', load);
   }, []);
 
-  /* ---------- external drop handler ---------- */
+  /* -------- external drag helpers ---------- */
+  const dragFromOutsideItem = () =>
+    draft
+      ? {
+          title: draft.customer_name,
+          start: new Date(),
+          end: new Date()
+        }
+      : null;
+
   const onDropFromOutside = ({ start }: { start: Date }) => {
-    if (!draftPicked) return;
-    // 1. create job in DB
+    if (!draft) return;
     fetch(`${API}/jobs`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        ...draftPicked,
+        ...draft,
         original_start_date_request: format(start, 'yyyy-MM-dd')
       })
     })
       .then(r => r.json())
-      .then(job => {
-        // move it to chosen day via backend move route (simplifies chain-reaction)
-        return fetch(`${API}/jobs/${job.id}/move`, {
+      .then(job =>
+        fetch(`${API}/jobs/${job.id}/move`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ newStartDate: format(start, 'yyyy-MM-dd') })
-        });
-      })
+        })
+      )
       .then(() => {
-        setUnscheduled(unscheduled.filter(j => j.id !== draftPicked.id));
-        setDraftPicked(null);
+        setUnscheduled(unscheduled.filter(j => j.id !== draft.id));
+        setDraft(null);
       });
   };
 
   return (
-    <div style={{ height: 650 }}>
-      <DnDCalendar
-        localizer={localizer}
-        events={events}
-        defaultView={Views.WEEK}
-        views={[Views.DAY, Views.WEEK, Views.MONTH]}
-        step={60}
-        onDropFromOutside={onDropFromOutside}
-        draggableAccessor={() => false}
-        eventPropGetter={ev => ({
-          style: {
-            backgroundColor: ev.resource.color_code,
-            color: '#fff',
-            borderRadius: 6
-          }
-        })}
-        handleDragStart={() => null} // required by addon
-      />
-      {/* Let Unscheduled lane mark card as the one being dragged */}
-      {/*
-        onDragStart provided by addon is only for internal DnD; we use onMouseDown in card
-      */}
-    </div>
+    <>
+      <div style={{ height: 650 }}>
+        <DnDCalendar
+          components={{ header: StaffHeader }}
+          localizer={localizer}
+          events={events}
+          defaultView={Views.WEEK}
+          views={[Views.DAY, Views.WEEK, Views.MONTH]}
+          step={60}
+          dragFromOutsideItem={dragFromOutsideItem}
+          onDropFromOutside={onDropFromOutside}
+          onDragOver={e => e.preventDefault()}
+          draggableAccessor={() => false}
+          selectable
+          onSelectEvent={ev => setEditing(ev.resource)}
+          eventPropGetter={ev => ({
+            style: {
+              backgroundColor: ev.resource.color_code,
+              color: '#fff',
+              borderRadius: 6
+            }
+          })}
+        />
+      </div>
+
+      {editing && (
+        <Modal
+          job={editing}
+          onClose={() => {
+            setEditing(null);
+            load();
+          }}
+        />
+      )}
+    </>
   );
 }
+
+export const setPickedDraft = (j: DraftJob | null) => {
+  /* helper to set 'draft' from UnscheduledLane */
+};
