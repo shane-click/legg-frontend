@@ -1,3 +1,4 @@
+import { setPickedDraft } from './ScheduleCalendar';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import type { DraftJob } from './JobModal';
 
@@ -33,7 +34,7 @@ export default function UnscheduledLane({
                       ref={p.innerRef}
                       {...p.draggableProps}
                       {...p.dragHandleProps}
-                      onMouseDown={() => onCardPicked(j)}
+                      onMouseDown={() => setPickedDraft(j)}
                       style={{
                         padding: 8,
                         borderRadius: 6,
