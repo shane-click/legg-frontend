@@ -13,9 +13,10 @@ import Modal from './JobEditModal';
 import type { DraftJob } from './JobModal';
 import { socket } from '../socket';
 
-import '@fullcalendar/common/main.css';
-import '@fullcalendar/timegrid/main.css';
-import '@fullcalendar/daygrid/main.css';
+import '@fullcalendar/core/index.css';
+import '@fullcalendar/timegrid/index.css';
+import '@fullcalendar/daygrid/index.css';
+import '@fullcalendar/resource-timegrid/index.css';
 
 const API = import.meta.env.VITE_API_BASE_URL;
 
