@@ -1,3 +1,4 @@
+import JobEditModal from './JobEditModal';
 import { useEffect, useState } from 'react';
 import { Calendar, dateFnsLocalizer, Views } from 'react-big-calendar';
 import withDnD from 'react-big-calendar/lib/addons/dragAndDrop';
