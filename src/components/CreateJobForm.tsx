@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { supabase } from '../supabaseClient';
 
 const API = import.meta.env.VITE_API_BASE_URL;
 
@@ -17,22 +16,21 @@ export default function Form({ onDone }: { onDone(): void }) {
     <form
       onSubmit={async e => {
         e.preventDefault();
-        const {
-          data: { session }
-        } = await supabase.auth.getSession();
         await fetch(`${API}/jobs`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${session!.access_token}`
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ...f, hours_required: parseFloat(f.hours_required) })
         });
         onDone();
       }}
     >
       <input placeholder="Customer" value={f.customer_name} onChange={change('customer_name')} />
-      <input type="number" step="0.25" value={f.hours_required} onChange={change('hours_required')} />
+      <input
+        type="number"
+        step="0.25"
+        value={f.hours_required}
+        onChange={change('hours_required')}
+      />
       <button>Create</button>
     </form>
   );
