@@ -10,35 +10,49 @@ interface Staff {
 }
 
 export default function StaffManager() {
-  const [staff, setStaff]   = useState<Staff[]>([]);
-  const [name,  setName]    = useState('');
-  const [cap,   setCap]     = useState('7');
+  const [staff, setStaff] = useState<Staff[]>([]);
+  const [name, setName]   = useState('');
+  const [cap,  setCap]    = useState('7');
+  const [error, setError] = useState<string | null>(null);
 
+  /* ── helpers ─────────────────────────────────── */
   const load = async () => {
+    setError(null);
     const { data: { session } } = await supabase.auth.getSession();
-    const r = await fetch(`${API}/staff`, {
-      headers: { Authorization: `Bearer ${session!.access_token}` }
-    });
-    setStaff(await r.json());
+    try {
+      const r = await fetch(`${API}/staff`, {
+        headers: { Authorization: `Bearer ${session!.access_token}` }
+      });
+      if (!r.ok) throw new Error(await r.text());
+      setStaff(await r.json());
+    } catch (e: any) { setError(e.message); }
   };
-  useEffect(() => { load(); }, []);
 
   const add = async () => {
+    setError(null);
     const { data: { session } } = await supabase.auth.getSession();
-    await fetch(`${API}/staff`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${session!.access_token}`
-      },
-      body: JSON.stringify({ name, default_daily_capacity: parseFloat(cap) })
-    });
-    setName(''); setCap('7'); load();
+    try {
+      const r = await fetch(`${API}/staff`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session!.access_token}`
+        },
+        body: JSON.stringify({ name, default_daily_capacity: parseFloat(cap) })
+      });
+      if (!r.ok) throw new Error(await r.text());
+      setName(''); setCap('7'); load();
+    } catch (e: any) { setError(e.message); }
   };
 
+  /* ── init ─────────────────────────────────────── */
+  useEffect(() => { load(); }, []);
+
+  /* ── UI ───────────────────────────────────────── */
   return (
-    <div style={{border:'1px solid #ccc',borderRadius:8,padding:12,maxWidth:350}}>
+    <div style={{border:'1px solid #ccc',borderRadius:8,padding:12,maxWidth:350,marginTop:20}}>
       <h3 style={{margin:'4px 0'}}>Staff</h3>
+      {error && <p style={{color:'red',fontSize:12}}>{error}</p>}
 
       <ul style={{listStyle:'none',padding:0}}>
         {staff.map(s => (
@@ -57,8 +71,7 @@ export default function StaffManager() {
           onChange={e=>setName(e.target.value)}
         />
         <input
-          type="number"
-          step="0.25"
+          type="number" step="0.25"
           style={{width:60}}
           value={cap}
           onChange={e=>setCap(e.target.value)}
