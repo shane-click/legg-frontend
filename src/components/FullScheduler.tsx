@@ -13,7 +13,7 @@ import Modal from './JobEditModal';
 import type { DraftJob } from './JobModal';
 import { socket } from '../socket';
 
-import '@fullcalendar/core/index.css';
+import '@fullcalendar/core/main.css';
 import '@fullcalendar/timegrid/index.css';
 import '@fullcalendar/daygrid/index.css';
 import '@fullcalendar/resource-timegrid/index.css';
