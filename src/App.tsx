@@ -1,30 +1,37 @@
 import { useState } from 'react';
-import { socket } from './socket';
-
-import Form from './components/CreateJobForm';
-import StaffManager from './components/StaffManager';
+import JobModal, { DraftJob } from './components/JobModal';
+import UnscheduledLane from './components/UnscheduledLane';
 import ScheduleCalendar from './components/ScheduleCalendar';
 
-/* ────────────────────────────────────────── */
-
 export default function App() {
-  // no auth needed
-  const [showForm, setShowForm] = useState(false);
-
-  // still connect socket immediately
-  socket();
+  const [modalOpen, setModalOpen] = useState(false);
+  const [unscheduled, setUnscheduled] = useState<DraftJob[]>([]);
+  const [picked, setPicked] = useState<DraftJob | null>(null);
 
   return (
     <div style={{ padding: 20 }}>
-      <h2>LEGG Scheduler (public demo)</h2>
+      <h2>LEGG Scheduler</h2>
 
-      <button onClick={() => setShowForm(x => !x)} style={{ marginBottom: 10 }}>
-        {showForm ? 'Hide Job Form' : 'Create New Job'}
-      </button>
-      {showForm && <Form onDone={() => setShowForm(false)} />}
+      <button onClick={() => setModalOpen(true)}>+ New Job</button>
 
-      <StaffManager />
-      <ScheduleCalendar />
+      <JobModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onSave={j => setUnscheduled([...unscheduled, j])}
+      />
+
+      <UnscheduledLane
+        jobs={unscheduled}
+        setJobs={setUnscheduled}
+        onCardPicked={j => setPicked(j)}
+      />
+
+      <ScheduleCalendar
+        unscheduled={unscheduled}
+        setUnscheduled={setUnscheduled}
+        picked={picked}
+        setPicked={setPicked}
+      />
     </div>
   );
 }
