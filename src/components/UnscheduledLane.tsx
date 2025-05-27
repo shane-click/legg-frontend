@@ -1,58 +1,41 @@
-import { setPickedDraft } from './ScheduleCalendar';
-import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import type { DraftJob } from './JobModal';
 
 export default function UnscheduledLane({
   jobs,
-  setJobs,
-  onCardPicked
+  setJobs
 }: {
   jobs: DraftJob[];
   setJobs(j: DraftJob[]): void;
-  onCardPicked(job: DraftJob): void;
 }) {
-  function onDragEnd(res: DropResult) {
-    if (!res.destination) return; // dropped outside
-    // we only care about external pick-up; calendar handles actual drop
-  }
+  /* remove a card manually, e.g. with an [x] button if you like */
+  const remove = (id: string) => setJobs(jobs.filter(j => j.id !== id));
 
   return (
     <div style={{ margin: '20px 0' }}>
       <h4>Unscheduled Jobs</h4>
-      <DragDropContext onDragEnd={onDragEnd}>
-        <Droppable droppableId="pool" direction="horizontal">
-          {provided => (
-            <div
-              ref={provided.innerRef}
-              {...provided.droppableProps}
-              style={{ display: 'flex', gap: 8, minHeight: 60 }}
-            >
-              {jobs.map((j, idx) => (
-                <Draggable draggableId={j.id} index={idx} key={j.id}>
-                  {p => (
-                    <div
-                      ref={p.innerRef}
-                      {...p.draggableProps}
-                      {...p.dragHandleProps}
-                      onMouseDown={() => setPickedDraft(j)}
-                      style={{
-                        padding: 8,
-                        borderRadius: 6,
-                        background: j.color_code,
-                        color: '#fff',
-                        ...p.draggableProps.style
-                      }}
-                    >
-                      {j.customer_name} ({j.hours_required}h)
-                    </div>
-                  )}
-                </Draggable>
-              ))}
-              {provided.placeholder}
-            </div>
-          )}
-        </Droppable>
-      </DragDropContext>
+
+      <div style={{ display: 'flex', gap: 8, minHeight: 60 }}>
+        {jobs.map(j => (
+          <div
+            key={j.id}
+            className="pool-card"
+            data-id={j.id}
+            data-hours={j.hours_required}
+            style={{
+              padding: 8,
+              borderRadius: 6,
+              background: j.color_code,
+              color: '#fff',
+              cursor: 'grab'
+            }}
+          >
+            {j.customer_name} ({j.hours_required}h)
+            {/* optional remove button
+            <span onClick={() => remove(j.id)} style={{ marginLeft: 6, cursor: 'pointer' }}>✕</span>
+            */}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
