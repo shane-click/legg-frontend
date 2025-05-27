@@ -3,10 +3,10 @@ import { Calendar, dateFnsLocalizer, Views } from 'react-big-calendar';
 import { format, parse, startOfWeek, getDay } from 'date-fns';
 import enAU from 'date-fns/locale/en-AU';
 import { supabase } from '../supabaseClient';
+import { socket } from '../socket';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 
 const API = import.meta.env.VITE_API_BASE_URL;
-
 const localizer = dateFnsLocalizer({
   format,
   parse,
@@ -15,35 +15,27 @@ const localizer = dateFnsLocalizer({
   locales: { 'en-AU': enAU }
 });
 
-interface Event {
-  id: number;
-  title: string;
-  start: Date;
-  end: Date;
-  resource: any;
-}
-
 export default function ScheduleCalendar() {
-  const [events, setEvents] = useState<Event[]>([]);
+  const [events, setEvents] = useState<any[]>([]);
 
   const load = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     const today = new Date();
     const in30  = new Date(+today + 1000*60*60*24*30);
     const qs = `startDate=${format(today,'yyyy-MM-dd')}&endDate=${format(in30,'yyyy-MM-dd')}`;
-    const r = await fetch(`${API}/jobs?${qs}`, {
+    const r  = await fetch(`${API}/jobs?${qs}`, {
       headers: { Authorization: `Bearer ${session!.access_token}` }
     });
     const rows = await r.json();
-    const evts: Event[] = rows.flatMap((j: any) =>
+
+    const evts = rows.flatMap((j: any) =>
       j.allocations.map((a: any) => {
         const start = new Date(`${a.allocation_date}T08:00`);
         const end   = new Date(+start + a.allocated_hours*60*60*1000);
         return {
           id: j.id,
           title: `${j.customer_name} (${a.allocated_hours}h)`,
-          start,
-          end,
+          start, end,
           resource: j
         };
       })
@@ -51,7 +43,13 @@ export default function ScheduleCalendar() {
     setEvents(evts);
   };
 
-  useEffect(() => { load(); }, []);
+  /* init + realtime refresh on socket event */
+  useEffect(() => {
+    load();
+    const s = socket();
+    s.on('schedule_updated', load);
+    return () => s.off('schedule_updated', load);
+  }, []);
 
   return (
     <div style={{height:600,marginTop:20}}>
