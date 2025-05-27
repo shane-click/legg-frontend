@@ -13,10 +13,6 @@ import Modal from './JobEditModal';
 import type { DraftJob } from './JobModal';
 import { socket } from '../socket';
 
-import '@fullcalendar/timegrid/index.css';
-import '@fullcalendar/daygrid/index.css';
-import '@fullcalendar/resource-timegrid/index.css';
-
 const API = import.meta.env.VITE_API_BASE_URL;
 
 /* --- external pool made draggable ---------------------------------- */
